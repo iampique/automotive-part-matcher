@@ -1,0 +1,222 @@
+================================================================================
+AUTOMOTIVE INFOTAINMENT SYSTEM CONNECTOR
+REQUIREMENT SPECIFICATION DOCUMENT
+================================================================================
+
+Document ID: INF-HU-DISP-CONN-002
+Revision: 1.0
+Date: 2024-01-15
+Classification: Proprietary
+
+================================================================================
+1.0 SCOPE
+================================================================================
+
+This specification defines the requirements for an electrical connector system
+designed to interconnect automotive infotainment head units with high-resolution
+display modules. The connector shall provide reliable transmission of power,
+video signals (LVDS), and control data in a cost-effective package suitable
+for high-volume automotive production.
+
+================================================================================
+2.0 APPLICATION
+================================================================================
+
+The connector is intended for use in:
+- Infotainment head unit to display panel interface
+- Dashboard display module connections
+- Center console display interconnections
+- Video signal and power distribution
+
+================================================================================
+3.0 ELECTRICAL REQUIREMENTS
+================================================================================
+
+3.1 Contact Configuration
+    - Total number of contacts: 48 pins
+    - Power contacts: 8 contacts (4 pairs for power/ground)
+    - Signal contacts: 40 contacts (LVDS differential pairs and control)
+
+3.2 Voltage Rating
+    - Operating voltage: 24V DC nominal
+    - Voltage range: 9V to 32V DC (per ISO 7637-2)
+    - Maximum continuous voltage: 36V DC
+    - Dielectric withstand voltage: 500V DC (1 minute)
+    - Creepage distance: 2.5mm minimum
+    - Clearance distance: 2.0mm minimum
+
+3.3 Current Rating
+    - Power contacts: 3A per contact maximum
+    - Total power capacity: 12A maximum
+    - Signal contacts: 0.5A maximum per contact
+    - Continuous duty rating at maximum operating temperature
+
+3.4 LVDS Signal Requirements
+    - LVDS pairs: 8 differential pairs (16 contacts)
+    - Signal voltage: 350mV differential (typical)
+    - Common mode voltage: 1.2V
+    - Data rate: 1.5 Gbps per lane minimum
+    - Signal integrity: Eye diagram compliance per LVDS standard
+    - Skew: < 100ps between differential pair members
+    - Impedance: 100Ω differential impedance (±10%)
+
+3.5 EMI Shielding Requirements
+    - Shielding effectiveness: > 40dB at frequencies 100MHz to 3GHz
+    - Shield continuity: < 10mΩ resistance across mated connector
+    - Shield termination: 360-degree shield contact required
+    - EMI gasket: Integrated EMI gasket or conductive housing required
+    - Ground contacts: Dedicated ground contacts for shield connection
+
+================================================================================
+4.0 MECHANICAL REQUIREMENTS
+================================================================================
+
+4.1 Connector Housing
+    - Material: Engineering thermoplastic (UL94 V-0 or better)
+    - Color: Black (standard automotive color)
+    - Locking mechanism: Positive locking with retention clip
+    - Mating force: < 30N
+    - Unmating force: 15N - 50N (with retention clip released)
+    - Connector height: < 15mm above PCB surface
+
+4.2 Contact Design
+    - Contact material: Phosphor bronze or beryllium copper
+    - Contact finish: Selective gold plating (0.38μm minimum) or tin plating
+    - Contact retention: Minimum 30N pull-out force per contact
+    - Contact resistance: < 10mΩ per contact (initial)
+    - Contact resistance stability: < 20mΩ after 100 mating cycles
+
+4.3 PCB Mounting
+    - Mounting style: Surface mount (SMT) or through-hole
+    - Solder joint reliability: Per IPC-A-610 Class 2 minimum
+    - Coplanarity: < 0.1mm for SMT contacts
+
+================================================================================
+5.0 ENVIRONMENTAL REQUIREMENTS
+================================================================================
+
+5.1 Operating Temperature
+    - Continuous operating range: -30°C to +85°C
+    - Storage temperature: -40°C to +100°C
+    - Temperature cycling: 500 cycles (-30°C to +85°C)
+    - Operating temperature with derating: Full performance to +85°C
+
+5.2 Environmental Sealing
+    - Ingress Protection: IP67 minimum
+    - IP67 test conditions: Immersion in 1 meter of water for 30 minutes
+    - Dust protection: IP6X (complete dust ingress protection)
+    - Sealing method: Gasket, potting, or overmold acceptable
+
+5.3 Humidity
+    - Relative humidity: 85% RH at 85°C (500 hours)
+    - Damp heat cycling: 10 cycles (25°C to 85°C, 85% RH)
+
+5.4 Vibration and Shock
+    - Vibration: Per ISO 16750-3, 20-2000 Hz, 0.1g²/Hz
+    - Shock: 50g, 11ms half-sine (per ISO 16750-2)
+    - Performance: No electrical discontinuity during testing
+
+================================================================================
+6.0 CERTIFICATION AND COMPLIANCE REQUIREMENTS
+================================================================================
+
+6.1 Quality Management
+    - IATF 16949 certification required
+    - Quality management system documentation required
+    - Process capability: Cpk ≥ 1.33 for critical dimensions
+
+6.2 Environmental Compliance
+    - RoHS 3 compliance (EU Directive 2015/863)
+    - REACH compliance (EU Regulation 1907/2006)
+    - Halogen-free preferred (Cl < 900ppm, Br < 900ppm)
+
+6.3 Automotive Standards
+    - Compliance with automotive EMC standards (CISPR 25)
+    - ESD protection: ±8kV contact discharge, ±15kV air discharge
+
+================================================================================
+7.0 COST REQUIREMENTS
+================================================================================
+
+7.1 Unit Cost
+    - Target unit price: < $5.00 USD per connector (at 100K annual volume)
+    - Cost breakdown required: Material, labor, overhead
+    - Annual cost reduction: 3-5% year-over-year expected
+
+7.2 Tooling and NRE
+    - Tooling costs: Amortized over production volume
+    - Non-Recurring Engineering (NRE): Quoted separately
+    - Minimum order quantity: 10,000 units
+
+================================================================================
+8.0 DELIVERY AND LOGISTICS REQUIREMENTS
+================================================================================
+
+8.1 Lead Time
+    - Standard lead time: 30 days from order placement
+    - Expedited delivery: 15 days available (premium pricing)
+    - Production capacity: 50,000 units/month minimum
+
+8.2 Packaging
+    - ESD protection: ESD-safe packaging for sensitive components
+    - Reel packaging: Available for automated assembly (if SMT)
+    - Labeling: Part number, date code, lot number, quantity
+
+================================================================================
+9.0 TECHNICAL NOTES AND DESIGN CONSIDERATIONS
+================================================================================
+
+9.1 LVDS Signal Integrity
+    - Maintain controlled impedance throughout signal path
+    - Minimize via transitions in PCB design
+    - Ensure proper ground return paths for differential signals
+    - Consider signal pre-emphasis or equalization if cable length > 500mm
+
+9.2 EMI Mitigation
+    - Shielding must provide continuous coverage around all signal contacts
+    - Ground contacts should be distributed throughout connector
+    - Consider ferrite cores for cable assembly if needed
+    - Connector housing should provide EMI gasket compression
+
+9.3 Thermal Management
+    - Consider power dissipation in connector design
+    - Ensure adequate airflow around connector in application
+    - Thermal derating may be required at maximum temperature
+
+9.4 Assembly Considerations
+    - Design for automated assembly preferred
+    - Provide assembly fixtures or guides if needed
+    - Clear visual indicators for proper mating orientation
+    - Color coding or keying to prevent incorrect mating
+
+================================================================================
+10.0 DOCUMENTATION REQUIREMENTS
+================================================================================
+
+10.1 Technical Documentation
+     - 3D CAD models (STEP, IGES formats)
+     - 2D drawings with dimensions and tolerances
+     - Material specifications and certificates
+     - Electrical test reports
+     - Environmental test reports
+     - Assembly instructions and recommended PCB layout
+
+10.2 Compliance Documentation
+     - Certificate of Compliance (CoC) per shipment
+     - IATF 16949 certificate
+     - Test reports for environmental and EMC testing
+     - Material composition declaration
+
+================================================================================
+11.0 ACCEPTANCE CRITERIA
+================================================================================
+
+All connectors must meet or exceed the requirements specified in this document.
+Connectors failing to meet any requirement shall be rejected. Supplier must
+provide test data demonstrating compliance with all requirements prior to
+production release. Cost targets must be met to remain competitive.
+
+================================================================================
+END OF DOCUMENT
+================================================================================
+
