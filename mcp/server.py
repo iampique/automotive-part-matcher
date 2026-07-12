@@ -3,14 +3,14 @@ import os
 from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
 from typing import Optional, Dict
-from fastapi import UploadFile
 import base64
 import io
 
-# Load .env from project root and backend/ so Qdrant/API keys are available
+# Load env from mcp/ then backend/ so Qdrant/API keys are available
 _here = os.path.dirname(os.path.abspath(__file__))
+_repo_root = os.path.dirname(_here)
 load_dotenv(os.path.join(_here, ".env"))
-load_dotenv(os.path.join(_here, "backend", ".env"))
+load_dotenv(os.path.join(_repo_root, "backend", ".env"))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,7 +41,6 @@ async def search_connectors(
         Dictionary with matched connectors and metadata
     """
     from backend.app.api import search_connectors as api_search_connectors
-    from backend.app.models import SearchResponse
     
     # Handle file upload if provided
     file_upload = None

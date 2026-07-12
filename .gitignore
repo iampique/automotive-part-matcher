@@ -2,7 +2,15 @@
 .env
 .env.*
 !.env.example
+*.backup
 *.env.backup
+
+# Secrets / credentials
+credentials.json
+*.pem
+*.key
+!*.key.example
+claude_mcp_config.json
 
 # Python
 __pycache__/
@@ -14,6 +22,7 @@ venv/
 .venv/
 env/
 ENV/
+.pytest_cache/
 
 # Node.js
 node_modules/
@@ -40,4 +49,3 @@ out/
 # OS
 .DS_Store
 Thumbs.db
-
