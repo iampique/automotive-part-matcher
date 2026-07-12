@@ -15,10 +15,24 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.agent import PartMatcherAgent
+from app.disruption_agent import DisruptionAgent
 from app.config import settings
-from app.models import ACORNComparisonResponse, SearchResponse
+from app.models import (
+    ACORNComparisonResponse,
+    AssemblyComplianceResponse,
+    ConnectorComplianceResponse,
+    DisruptionRequest,
+    DisruptionResponse,
+    ImpactAnalysisResponse,
+    SearchResponse,
+    SpofResponse,
+    PartSourcing,
+    SupplierConnectorsResponse,
+    SupplierRiskResponse,
+)
 from app.services.document_parser import DocumentParser
 from app.services.llm_service import LLMService
+from app.services.neo4j_service import Neo4jService
 from app.services.qdrant_service import QdrantService
 
 # Configure logging
@@ -61,6 +75,14 @@ app = FastAPI(
             "name": "Workflow",
             "description": "Workflow visualization and documentation",
         },
+        {
+            "name": "Graph",
+            "description": "Neo4j graph queries: impact, compliance, supplier topology",
+        },
+        {
+            "name": "Disruption",
+            "description": "Supply disruption mitigation: impact, alternatives, compliance, supplier risk",
+        },
     ],
 )
 
@@ -85,7 +107,19 @@ except Exception as e:
     logger.warning(f"Failed to ensure collection indexes: {e}. Indexes may need to be created manually.")
 agent = PartMatcherAgent(llm_service=llm_service, qdrant_service=qdrant_service)
 document_parser = DocumentParser()
+neo4j_service = Neo4jService() if settings.neo4j_enabled else None
+disruption_agent = DisruptionAgent(qdrant_service=qdrant_service, neo4j_service=neo4j_service)
 logger.info("Global service instances initialized successfully")
+
+
+def _require_neo4j() -> Neo4jService:
+    """Return Neo4j service or raise 503 if graph features are disabled."""
+    if neo4j_service is None or not neo4j_service.enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Neo4j graph features are disabled. Set NEO4J_URI and NEO4J_PASSWORD in backend/.env",
+        )
+    return neo4j_service
 
 
 @app.get("/", tags=["Health"])
@@ -118,10 +152,18 @@ async def health_check() -> Dict[str, str]:
     except Exception as e:
         logger.warning(f"Health check: Qdrant connection issue: {e}")
         qdrant_status = "disconnected"
+
+    if neo4j_service is None or not neo4j_service.enabled:
+        neo4j_status = "disabled"
+    elif neo4j_service.verify_connectivity():
+        neo4j_status = "connected"
+    else:
+        neo4j_status = "disconnected"
     
     return {
         "status": "healthy",
-        "qdrant": qdrant_status
+        "qdrant": qdrant_status,
+        "neo4j": neo4j_status,
     }
 
 
@@ -668,6 +710,7 @@ async def get_connector(part_number: str) -> Dict:
 async def get_similar_connectors(
     part_number: str,
     limit: int = 5,
+    validate_graph: bool = False,
 ) -> Dict:
     """
     Find similar connectors to the specified connector using Qdrant's recommendation API.
@@ -773,6 +816,22 @@ async def get_similar_connectors(
                 "similarity_score": round(similarity_score, 2),
                 "explanation": explanation
             })
+
+        graph_validation = None
+        if validate_graph and neo4j_service and neo4j_service.enabled:
+            alt_pns = [item["connector"]["part_number"] for item in similar_connectors_data]
+            compliance_map = neo4j_service.get_connector_compliance_batch(alt_pns)
+            sourcing_map = neo4j_service.get_part_sourcing_batch(alt_pns)
+            spof_pns = {e.part_number for e in neo4j_service.get_spof().entries}
+            for item in similar_connectors_data:
+                pn = item["connector"]["part_number"]
+                comp = compliance_map.get(pn)
+                src = sourcing_map.get(pn)
+                item["compliance_gaps"] = [g.model_dump() for g in comp.gaps] if comp else []
+                item["certifications"] = comp.certifications if comp else item["connector"].get("certifications", [])
+                item["supplier"] = src.model_dump() if src else None
+                item["is_spof"] = pn in spof_pns
+            graph_validation = True
         
         # Build overall explanation
         overall_explanation = (
@@ -789,7 +848,8 @@ async def get_similar_connectors(
             "similar_connectors": similar_connectors_data,
             "base_connector": base_connector.model_dump(),
             "explanation": overall_explanation,
-            "count": len(similar_connectors_data)
+            "count": len(similar_connectors_data),
+            "graph_validation": graph_validation,
         }
         
     except HTTPException:
@@ -872,3 +932,152 @@ async def get_workflow_diagram() -> Dict[str, str]:
             status_code=500,
             detail=error_msg
         )
+
+
+@app.get("/api/graph/impact/{part_number}", response_model=ImpactAnalysisResponse, tags=["Graph"])
+async def get_part_impact(part_number: str) -> ImpactAnalysisResponse:
+    """Impact analysis: vehicles and assemblies affected when a part is unavailable."""
+    service = _require_neo4j()
+    try:
+        result = service.get_impact(part_number)
+        if not result.affected_assemblies:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No graph relationships found for part '{part_number}'",
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Impact analysis failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/api/graph/compliance/{assembly_id}",
+    response_model=AssemblyComplianceResponse,
+    tags=["Graph"],
+)
+async def get_assembly_compliance(assembly_id: str) -> AssemblyComplianceResponse:
+    """Compliance inheritance: requirements cascading through assembly hierarchies."""
+    service = _require_neo4j()
+    try:
+        return service.get_assembly_compliance(assembly_id)
+    except Exception as e:
+        logger.error("Assembly compliance query failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/api/graph/compliance/connector/{part_number}",
+    response_model=ConnectorComplianceResponse,
+    tags=["Graph"],
+)
+async def get_connector_compliance(part_number: str) -> ConnectorComplianceResponse:
+    """Compliance gaps for a connector against inherited assembly requirements."""
+    service = _require_neo4j()
+    try:
+        return service.get_connector_compliance(part_number)
+    except Exception as e:
+        logger.error("Connector compliance query failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/api/graph/sourcing/{part_number}",
+    response_model=PartSourcing,
+    tags=["Graph"],
+)
+async def get_part_sourcing(part_number: str) -> PartSourcing:
+    """Primary supplier and share for a specific connector part."""
+    service = _require_neo4j()
+    try:
+        result = service.get_part_sourcing(part_number)
+        if result is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No sourcing data found for part '{part_number}'",
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Part sourcing query failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/graph/suppliers/risk", response_model=SupplierRiskResponse, tags=["Graph"])
+async def get_supplier_risk() -> SupplierRiskResponse:
+    """Supplier concentration risk across critical parts and assemblies."""
+    service = _require_neo4j()
+    try:
+        return service.get_supplier_risk()
+    except Exception as e:
+        logger.error("Supplier risk query failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/graph/suppliers/spof", response_model=SpofResponse, tags=["Graph"])
+async def get_supplier_spof() -> SpofResponse:
+    """Single points of failure: sole-source critical connectors and affected vehicles."""
+    service = _require_neo4j()
+    try:
+        return service.get_spof()
+    except Exception as e:
+        logger.error("SPOF query failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/disruption/analyze", response_model=DisruptionResponse, tags=["Disruption"])
+async def analyze_disruption(request: DisruptionRequest) -> DisruptionResponse:
+    """
+    Supply disruption mitigation workflow.
+
+    Orchestrates impact analysis (Neo4j), alternative discovery (Qdrant),
+    compliance validation, supplier risk assessment, and ranked mitigation options.
+    """
+    try:
+        logger.info(
+            "Disruption analysis for %s (max_alts=%s, min_sim=%s)",
+            request.part_number,
+            request.max_alternatives,
+            request.min_similarity,
+        )
+        return disruption_agent.run(
+            part_number=request.part_number,
+            max_alternatives=request.max_alternatives,
+            min_similarity=request.min_similarity,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error("Disruption analysis failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/disruption/workflow-diagram", tags=["Disruption"])
+async def get_disruption_workflow_diagram() -> Dict[str, str]:
+    """Mermaid diagram for the disruption mitigation LangGraph workflow."""
+    return {
+        "mermaid": disruption_agent.export_workflow_diagram(),
+        "description": "Disruption mitigation workflow: impact → alternatives → compliance → supplier risk → rank",
+    }
+
+
+@app.get(
+    "/api/graph/suppliers/{supplier_id}/connectors",
+    response_model=SupplierConnectorsResponse,
+    tags=["Graph"],
+)
+async def get_supplier_connectors(supplier_id: str) -> SupplierConnectorsResponse:
+    """Drill-down: connectors supplied by a specific supplier."""
+    service = _require_neo4j()
+    try:
+        return service.get_supplier_connectors(supplier_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error("Supplier connectors query failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

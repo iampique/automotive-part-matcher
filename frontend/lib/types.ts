@@ -215,6 +215,12 @@ export interface SimilarConnector {
   
   /** Explanation of why this connector is similar */
   explanation: string;
+
+  /** Present when validate_graph=true and Neo4j is connected */
+  compliance_gaps?: ConnectorComplianceResponse['gaps'];
+  certifications?: string[];
+  supplier?: PartSourcing | null;
+  is_spof?: boolean;
 }
 
 /**
@@ -235,4 +241,144 @@ export interface SimilarConnectorsResponse {
   
   /** Number of similar connectors found */
   count: number;
+
+  /** True when graph validation was applied */
+  graph_validation?: boolean | null;
+}
+
+/** Health check response from backend */
+export interface HealthResponse {
+  status: string;
+  qdrant: string;
+  neo4j?: string;
+}
+
+/** Impact analysis — vehicles/assemblies affected by part unavailability */
+export interface AffectedAssembly {
+  id: string;
+  name: string;
+  criticality: string;
+  qty: number;
+  critical: boolean;
+}
+
+export interface AffectedVehicle {
+  id: string;
+  name: string;
+  platform: string;
+  model_year: number;
+}
+
+export interface ImpactAnalysisResponse {
+  part_number: string;
+  connector_name?: string;
+  affected_vehicles: AffectedVehicle[];
+  affected_assemblies: AffectedAssembly[];
+  critical_paths: string[];
+  total_bom_qty: number;
+}
+
+export interface ComplianceRequirement {
+  id: string;
+  name: string;
+  standard: string;
+  severity: string;
+  source_assembly_id: string;
+  source_assembly_name: string;
+  inherited_from?: string;
+}
+
+export interface ConnectorComplianceResponse {
+  part_number: string;
+  connector_name?: string;
+  assemblies: string[];
+  requirements: ComplianceRequirement[];
+  certifications: string[];
+  gaps: {
+    requirement_id: string;
+    requirement_name: string;
+    standard: string;
+    source_assembly_id: string;
+    source_assembly_name: string;
+  }[];
+}
+
+export interface SupplierRiskEntry {
+  supplier_id: string;
+  supplier_name: string;
+  region: string;
+  tier: number;
+  critical_parts: number;
+  critical_assemblies: number;
+  sole_source_count: number;
+  risk_score: number;
+}
+
+export interface SupplierRiskResponse {
+  suppliers: SupplierRiskEntry[];
+}
+
+export interface SpofEntry {
+  part_number: string;
+  connector_name: string;
+  supplier_id: string;
+  supplier_name: string;
+  affected_vehicles: string[];
+  affected_assemblies: string[];
+}
+
+export interface SpofResponse {
+  entries: SpofEntry[];
+}
+
+export interface PartSourcing {
+  part_number: string;
+  supplier_id: string;
+  supplier_name: string;
+  region: string;
+  tier: number;
+  share_pct: number;
+  sole_source: boolean;
+}
+
+export interface MitigationCandidate {
+  part_number: string;
+  name: string;
+  connector: Connector;
+  similarity_score: number;
+  mitigation_score: number;
+  verdict: 'preferred' | 'caution' | 'not_recommended';
+  recommendation: string;
+  compliance_gaps: ConnectorComplianceResponse['gaps'];
+  critical_compliance_gaps: ConnectorComplianceResponse['gaps'];
+  certifications: string[];
+  sourcing?: PartSourcing | null;
+  is_spof: boolean;
+}
+
+export interface DisruptionExecutionStep {
+  node: string;
+  duration_ms: number;
+  output: string;
+  status: string;
+}
+
+export interface DisruptionResponse {
+  disrupted_part_number: string;
+  disrupted_connector_name?: string;
+  impact: ImpactAnalysisResponse;
+  disrupted_sourcing?: PartSourcing | null;
+  disrupted_is_spof: boolean;
+  alternatives: MitigationCandidate[];
+  execution_trace: DisruptionExecutionStep[];
+  graph_enabled: boolean;
+  warnings: string[];
+  processing_time_ms: number;
+  summary: string;
+}
+
+export interface DisruptionRequest {
+  part_number: string;
+  max_alternatives?: number;
+  min_similarity?: number;
 }

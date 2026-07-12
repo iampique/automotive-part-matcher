@@ -12,6 +12,14 @@ import type {
   SearchResponse,
   WorkflowDiagram,
   SimilarConnectorsResponse,
+  HealthResponse,
+  ImpactAnalysisResponse,
+  ConnectorComplianceResponse,
+  SupplierRiskResponse,
+  SpofResponse,
+  DisruptionRequest,
+  DisruptionResponse,
+  PartSourcing,
 } from './types';
 
 /**
@@ -251,7 +259,8 @@ export async function getWorkflowDiagram(): Promise<WorkflowDiagram> {
  */
 export async function findSimilarConnectors(
   partNumber: string,
-  limit: number = 5
+  limit: number = 5,
+  validateGraph: boolean = false
 ): Promise<SimilarConnectorsResponse> {
   try {
     // Validate limit
@@ -262,7 +271,7 @@ export async function findSimilarConnectors(
     const response = await apiClient.get<SimilarConnectorsResponse>(
       `/api/connector/${encodeURIComponent(partNumber)}/similar`,
       {
-        params: { limit },
+        params: { limit, validate_graph: validateGraph },
       }
     );
     
@@ -276,5 +285,100 @@ export async function findSimilarConnectors(
     }
     
     throw new Error(`Failed to find similar connectors: ${errorMessage}`);
+  }
+}
+
+export async function getHealth(): Promise<HealthResponse> {
+  try {
+    const response = await apiClient.get<HealthResponse>('/health');
+    return response.data;
+  } catch (error) {
+    const errorMessage = formatError(error);
+    throw new Error(`Health check failed: ${errorMessage}`);
+  }
+}
+
+export async function getPartImpact(partNumber: string): Promise<ImpactAnalysisResponse> {
+  try {
+    const response = await apiClient.get<ImpactAnalysisResponse>(
+      `/api/graph/impact/${encodeURIComponent(partNumber)}`
+    );
+    return response.data;
+  } catch (error) {
+    const errorMessage = formatError(error);
+    throw new Error(`Impact analysis failed: ${errorMessage}`);
+  }
+}
+
+export async function getConnectorCompliance(
+  partNumber: string
+): Promise<ConnectorComplianceResponse> {
+  try {
+    const response = await apiClient.get<ConnectorComplianceResponse>(
+      `/api/graph/compliance/connector/${encodeURIComponent(partNumber)}`
+    );
+    return response.data;
+  } catch (error) {
+    const errorMessage = formatError(error);
+    throw new Error(`Compliance lookup failed: ${errorMessage}`);
+  }
+}
+
+export async function getPartSourcing(partNumber: string): Promise<PartSourcing> {
+  try {
+    const response = await apiClient.get<PartSourcing>(
+      `/api/graph/sourcing/${encodeURIComponent(partNumber)}`
+    );
+    return response.data;
+  } catch (error) {
+    const errorMessage = formatError(error);
+    throw new Error(`Part sourcing lookup failed: ${errorMessage}`);
+  }
+}
+
+export async function getSupplierRisk(): Promise<SupplierRiskResponse> {
+  try {
+    const response = await apiClient.get<SupplierRiskResponse>('/api/graph/suppliers/risk');
+    return response.data;
+  } catch (error) {
+    const errorMessage = formatError(error);
+    throw new Error(`Supplier risk query failed: ${errorMessage}`);
+  }
+}
+
+export async function getSupplierSpof(): Promise<SpofResponse> {
+  try {
+    const response = await apiClient.get<SpofResponse>('/api/graph/suppliers/spof');
+    return response.data;
+  } catch (error) {
+    const errorMessage = formatError(error);
+    throw new Error(`SPOF query failed: ${errorMessage}`);
+  }
+}
+
+export async function analyzeDisruption(
+  request: DisruptionRequest
+): Promise<DisruptionResponse> {
+  try {
+    const response = await apiClient.post<DisruptionResponse>(
+      '/api/disruption/analyze',
+      request
+    );
+    return response.data;
+  } catch (error) {
+    const errorMessage = formatError(error);
+    throw new Error(`Disruption analysis failed: ${errorMessage}`);
+  }
+}
+
+export async function getDisruptionWorkflowDiagram(): Promise<{ mermaid: string; description: string }> {
+  try {
+    const response = await apiClient.get<{ mermaid: string; description: string }>(
+      '/api/disruption/workflow-diagram'
+    );
+    return response.data;
+  } catch (error) {
+    const errorMessage = formatError(error);
+    throw new Error(`Failed to load disruption workflow diagram: ${errorMessage}`);
   }
 }

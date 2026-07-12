@@ -77,6 +77,19 @@ Each workflow step is independently traceable, allowing users to understand exac
 
 ## Architecture
 
+### Dual-Store: Qdrant + Neo4j
+
+The system uses two complementary databases:
+
+| Store | Role | Use Cases |
+|-------|------|-----------|
+| **Qdrant** | Vector search | Semantic connector matching, similar parts |
+| **Neo4j** (optional) | Graph relationships | Impact analysis, compliance inheritance, supplier topology |
+
+Vector search finds similar connectors; graphs answer questions vectors cannot — which vehicles are affected when a part is unavailable, how compliance requirements cascade through assembly hierarchies, and where supplier concentration creates risk.
+
+Neo4j is optional. Without `NEO4J_URI` configured, search works unchanged and graph endpoints return `503`. See [backend/NEO4J_SETUP.md](backend/NEO4J_SETUP.md) for AuraDB setup.
+
 ### Workflow Diagram
 
 The matching workflow follows a four-step process:

@@ -5,7 +5,7 @@ import SearchInput from '@/components/SearchInput';
 import ResultsDisplay from '@/components/ResultsDisplay';
 import { searchConnectors } from '@/lib/api';
 import type { MatchResult, ExecutionStep } from '@/lib/types';
-import { Zap, Workflow } from 'lucide-react';
+import { Zap, Workflow, Network } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Home() {
@@ -88,6 +88,20 @@ export default function Home() {
               </div>
             </div>
             <div className="hidden md:flex items-center space-x-4">
+              <Link 
+                href="/disruption" 
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border border-red-100 hover:border-red-200 transition-all duration-200 hover:shadow-md"
+              >
+                <Zap className="w-4 h-4 text-red-600" />
+                <span className="text-sm font-medium text-red-700">Disruption Demo</span>
+              </Link>
+              <Link 
+                href="/graph" 
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-100 hover:border-purple-200 transition-all duration-200 hover:shadow-md"
+              >
+                <Network className="w-4 h-4 text-purple-600" />
+                <span className="text-sm font-medium text-purple-700">Supplier Risk</span>
+              </Link>
               <Link 
                 href="/workflow" 
                 className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100 hover:border-indigo-200 transition-all duration-200 hover:shadow-md"

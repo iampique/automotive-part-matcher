@@ -1,0 +1,14 @@
+CREATE CONSTRAINT connector_part_number IF NOT EXISTS
+  FOR (c:Connector) REQUIRE c.part_number IS UNIQUE;
+CREATE CONSTRAINT assembly_id IF NOT EXISTS
+  FOR (a:Assembly) REQUIRE a.id IS UNIQUE;
+CREATE CONSTRAINT vehicle_id IF NOT EXISTS
+  FOR (v:Vehicle) REQUIRE v.id IS UNIQUE;
+CREATE CONSTRAINT supplier_id IF NOT EXISTS
+  FOR (s:Supplier) REQUIRE s.id IS UNIQUE;
+CREATE CONSTRAINT requirement_id IF NOT EXISTS
+  FOR (r:Requirement) REQUIRE r.id IS UNIQUE;
+CREATE CONSTRAINT application_name IF NOT EXISTS
+  FOR (a:Application) REQUIRE a.name IS UNIQUE;
+CREATE CONSTRAINT certification_name IF NOT EXISTS
+  FOR (c:Certification) REQUIRE c.name IS UNIQUE;

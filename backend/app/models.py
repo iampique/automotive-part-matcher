@@ -493,3 +493,225 @@ class ACORNComparisonResponse(BaseModel):
         ...,
         description="Comparison metrics and recommendations including latency differences, result quality, and when ACORN helps"
     )
+
+
+# ---------------------------------------------------------------------------
+# Neo4j graph domain models
+# ---------------------------------------------------------------------------
+
+
+class GraphVehicle(BaseModel):
+    id: str
+    name: str
+    platform: str
+    model_year: int
+
+
+class GraphAssembly(BaseModel):
+    id: str
+    name: str
+    parent_id: Optional[str] = None
+    criticality: str = "medium"
+    requirement_ids: List[str] = Field(default_factory=list)
+
+
+class GraphSupplier(BaseModel):
+    id: str
+    name: str
+    region: str
+    tier: int = 1
+
+
+class GraphBomLine(BaseModel):
+    assembly_id: str
+    part_number: str
+    qty: int = 1
+    critical: bool = False
+
+
+class GraphSourcing(BaseModel):
+    part_number: str
+    supplier_id: str
+    share_pct: float = 100.0
+    sole_source: bool = False
+
+
+class GraphRequirement(BaseModel):
+    id: str
+    name: str
+    standard: str
+    severity: str = "medium"
+
+
+class GraphRequirementHierarchy(BaseModel):
+    child_id: str
+    parent_id: str
+
+
+class GraphSeedData(BaseModel):
+    vehicles: List[GraphVehicle]
+    assemblies: List[GraphAssembly]
+    bom_lines: List[GraphBomLine]
+    suppliers: List[GraphSupplier]
+    sourcing: List[GraphSourcing]
+    requirements: List[GraphRequirement]
+    requirement_hierarchy: List[GraphRequirementHierarchy] = Field(default_factory=list)
+    vehicle_assemblies: List[Dict[str, str]] = Field(default_factory=list)
+
+
+class AffectedAssembly(BaseModel):
+    id: str
+    name: str
+    criticality: str
+    qty: int
+    critical: bool
+
+
+class AffectedVehicle(BaseModel):
+    id: str
+    name: str
+    platform: str
+    model_year: int
+
+
+class ImpactAnalysisResponse(BaseModel):
+    part_number: str
+    connector_name: Optional[str] = None
+    affected_vehicles: List[AffectedVehicle]
+    affected_assemblies: List[AffectedAssembly]
+    critical_paths: List[str]
+    total_bom_qty: int
+
+
+class ComplianceRequirement(BaseModel):
+    id: str
+    name: str
+    standard: str
+    severity: str
+    source_assembly_id: str
+    source_assembly_name: str
+    inherited_from: Optional[str] = None
+
+
+class AssemblyComplianceResponse(BaseModel):
+    assembly_id: str
+    assembly_name: str
+    requirements: List[ComplianceRequirement]
+
+
+class ComplianceGap(BaseModel):
+    requirement_id: str
+    requirement_name: str
+    standard: str
+    source_assembly_id: str
+    source_assembly_name: str
+
+
+class ConnectorComplianceResponse(BaseModel):
+    part_number: str
+    connector_name: Optional[str] = None
+    assemblies: List[str]
+    requirements: List[ComplianceRequirement]
+    certifications: List[str]
+    gaps: List[ComplianceGap]
+
+
+class SupplierRiskEntry(BaseModel):
+    supplier_id: str
+    supplier_name: str
+    region: str
+    tier: int
+    critical_parts: int
+    critical_assemblies: int
+    sole_source_count: int
+    risk_score: float
+
+
+class SupplierRiskResponse(BaseModel):
+    suppliers: List[SupplierRiskEntry]
+
+
+class SpofEntry(BaseModel):
+    part_number: str
+    connector_name: str
+    supplier_id: str
+    supplier_name: str
+    affected_vehicles: List[str]
+    affected_assemblies: List[str]
+
+
+class SpofResponse(BaseModel):
+    entries: List[SpofEntry]
+
+
+class SupplierConnectorEntry(BaseModel):
+    part_number: str
+    name: str
+    share_pct: float
+    sole_source: bool
+    critical_assemblies: List[str]
+
+
+class SupplierConnectorsResponse(BaseModel):
+    supplier_id: str
+    supplier_name: str
+    connectors: List[SupplierConnectorEntry]
+
+
+# ---------------------------------------------------------------------------
+# Disruption response / mitigation models
+# ---------------------------------------------------------------------------
+
+MitigationVerdict = str  # "preferred" | "caution" | "not_recommended"
+
+
+class DisruptionRequest(BaseModel):
+    part_number: str = Field(..., description="Disrupted connector part number")
+    max_alternatives: int = Field(default=10, ge=1, le=20)
+    min_similarity: float = Field(default=50.0, ge=0.0, le=100.0)
+
+
+class PartSourcing(BaseModel):
+    part_number: str
+    supplier_id: str
+    supplier_name: str
+    region: str
+    tier: int
+    share_pct: float
+    sole_source: bool
+
+
+class MitigationCandidate(BaseModel):
+    part_number: str
+    name: str
+    connector: Connector
+    similarity_score: float
+    mitigation_score: float
+    verdict: str
+    recommendation: str
+    compliance_gaps: List[ComplianceGap] = Field(default_factory=list)
+    critical_compliance_gaps: List[ComplianceGap] = Field(default_factory=list)
+    certifications: List[str] = Field(default_factory=list)
+    sourcing: Optional[PartSourcing] = None
+    is_spof: bool = False
+
+
+class DisruptionExecutionStep(BaseModel):
+    node: str
+    duration_ms: float
+    output: str
+    status: str
+
+
+class DisruptionResponse(BaseModel):
+    disrupted_part_number: str
+    disrupted_connector_name: Optional[str] = None
+    impact: ImpactAnalysisResponse
+    disrupted_sourcing: Optional[PartSourcing] = None
+    disrupted_is_spof: bool = False
+    alternatives: List[MitigationCandidate]
+    execution_trace: List[DisruptionExecutionStep]
+    graph_enabled: bool
+    warnings: List[str] = Field(default_factory=list)
+    processing_time_ms: float
+    summary: str

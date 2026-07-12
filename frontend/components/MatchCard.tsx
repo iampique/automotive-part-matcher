@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Award, Info, Search, X, Loader2, Zap, CheckCircle2, Clock, Shield, DollarSign, AlertTriangle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Award, Info, Search, X, Loader2, Zap, CheckCircle2, Clock, Shield, DollarSign, AlertTriangle, Network } from 'lucide-react';
 import type { MatchResult, SimilarConnector } from '@/lib/types';
 import { findSimilarConnectors } from '@/lib/api';
+import GraphInsightsPanel from './GraphInsightsPanel';
 
 interface MatchCardProps {
   match: MatchResult;
@@ -47,6 +48,7 @@ export default function MatchCard({ match }: MatchCardProps) {
   const [similarConnectors, setSimilarConnectors] = useState<SimilarConnector[]>([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [similarError, setSimilarError] = useState<string | null>(null);
+  const [showGraph, setShowGraph] = useState(false);
   
   const { connector, match_score, match_explanation } = match;
   const { specifications, certifications, applications, pricing } = connector;
@@ -59,7 +61,7 @@ export default function MatchCard({ match }: MatchCardProps) {
     setShowSimilar(true);
     
     try {
-      const response = await findSimilarConnectors(connector.part_number, 5);
+      const response = await findSimilarConnectors(connector.part_number, 5, true);
       setSimilarConnectors(response.similar_connectors);
     } catch (error) {
       setSimilarError(error instanceof Error ? error.message : 'Failed to find similar connectors');
@@ -252,8 +254,8 @@ export default function MatchCard({ match }: MatchCardProps) {
               </div>
             </div>
 
-            {/* Find Similar Button - Enhanced */}
-            <div className="border-t border-gray-200 pt-6">
+            {/* Find Similar + Graph Insights */}
+            <div className="border-t border-gray-200 pt-6 space-y-3">
               <button
                 onClick={handleFindSimilar}
                 disabled={loadingSimilar}
@@ -270,6 +272,13 @@ export default function MatchCard({ match }: MatchCardProps) {
                     <span>Find Similar Connectors</span>
                   </>
                 )}
+              </button>
+              <button
+                onClick={() => setShowGraph(true)}
+                className="w-full flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
+                <Network className="w-5 h-5" />
+                <span>View Graph Insights</span>
               </button>
             </div>
           </div>
@@ -341,6 +350,32 @@ export default function MatchCard({ match }: MatchCardProps) {
                         {similar.explanation}
                       </p>
 
+                      {(similar.supplier || (similar.compliance_gaps && similar.compliance_gaps.length > 0) || similar.is_spof) && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {similar.supplier && (
+                            <span className="text-xs font-medium bg-indigo-50 text-indigo-800 border border-indigo-200 px-2 py-1 rounded-lg">
+                              Supplier: {similar.supplier.supplier_name}
+                              {similar.supplier.sole_source ? ' (sole source)' : ''}
+                            </span>
+                          )}
+                          {similar.compliance_gaps && similar.compliance_gaps.length > 0 && (
+                            <span className="text-xs font-medium bg-red-50 text-red-800 border border-red-200 px-2 py-1 rounded-lg">
+                              {similar.compliance_gaps.length} compliance gap(s)
+                            </span>
+                          )}
+                          {similar.compliance_gaps && similar.compliance_gaps.length === 0 && similar.supplier && (
+                            <span className="text-xs font-medium bg-green-50 text-green-800 border border-green-200 px-2 py-1 rounded-lg">
+                              No compliance gaps
+                            </span>
+                          )}
+                          {similar.is_spof && (
+                            <span className="text-xs font-medium bg-red-50 text-red-800 border border-red-200 px-2 py-1 rounded-lg">
+                              SPOF flagged
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                         {[
                           { label: 'Pins', value: similar.connector.specifications.pin_count },
@@ -389,6 +424,10 @@ export default function MatchCard({ match }: MatchCardProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {showGraph && (
+        <GraphInsightsPanel match={match} onClose={() => setShowGraph(false)} />
       )}
     </>
   );

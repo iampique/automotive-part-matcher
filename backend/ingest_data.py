@@ -32,6 +32,7 @@ Verification step importance:
 - Helps identify issues early in the process
 """
 
+import argparse
 import json
 import logging
 import sys
@@ -358,6 +359,14 @@ def main() -> int:
     Returns:
         Exit code: 0 for success, 1 for errors
     """
+    parser = argparse.ArgumentParser(description="Ingest connector catalog into Qdrant")
+    parser.add_argument(
+        "--with-graph",
+        action="store_true",
+        help="Also ingest graph relationships into Neo4j after Qdrant upload",
+    )
+    args = parser.parse_args()
+
     logger.info("=" * 60)
     logger.info("AUTOMOTIVE CONNECTOR DATA INGESTION")
     logger.info("=" * 60)
@@ -430,6 +439,15 @@ def main() -> int:
         if errors:
             logger.info(f"⚠ {len(errors)} connectors had validation errors (see above)")
         logger.info("\n🎉 Data ingestion completed successfully!")
+
+        if args.with_graph:
+            logger.info("\nStarting graph ingestion (--with-graph)...")
+            from ingest_graph import main as ingest_graph_main
+            graph_exit = ingest_graph_main()
+            if graph_exit != 0:
+                logger.error("Graph ingestion failed")
+                return graph_exit
+            logger.info("Graph ingestion completed successfully")
         
         return 0
         

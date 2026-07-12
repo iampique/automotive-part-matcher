@@ -101,6 +101,27 @@ class Settings(BaseSettings):
         default=0.4,
         description="ACORN maximum selectivity threshold (0.0-1.0). Controls when to fall back to exact search"
     )
+
+    # Neo4j graph database (optional)
+    neo4j_uri: Optional[str] = Field(
+        default=None,
+        description="Neo4j AuraDB connection URI (neo4j+s://...). Graph features disabled if unset.",
+    )
+
+    neo4j_username: str = Field(
+        default="neo4j",
+        description="Neo4j database username",
+    )
+
+    neo4j_password: Optional[str] = Field(
+        default=None,
+        description="Neo4j database password",
+    )
+
+    @property
+    def neo4j_enabled(self) -> bool:
+        """True when Neo4j URI and password are configured."""
+        return bool(self.neo4j_uri and self.neo4j_password)
     
     @field_validator("llm_provider")
     @classmethod

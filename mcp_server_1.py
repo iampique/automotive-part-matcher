@@ -106,5 +106,77 @@ async def get_similar_connectors(part_number: str, limit: int = 5) -> Dict:
         logger.error(f"Get similar connectors failed: {e}")
         return {"error": f"Get similar connectors failed: {str(e)}"}
 
+@server.tool()
+async def get_part_impact(part_number: str) -> Dict:
+    """Impact analysis: vehicles and assemblies affected when a part is unavailable."""
+    from backend.app.api import get_part_impact as api_get_part_impact
+    try:
+        result = await api_get_part_impact(part_number=part_number)
+        return result.model_dump() if hasattr(result, "model_dump") else result
+    except Exception as e:
+        logger.error(f"Get part impact failed: {e}")
+        return {"error": str(e)}
+
+
+@server.tool()
+async def get_assembly_compliance(assembly_id: str) -> Dict:
+    """Compliance inheritance for an assembly hierarchy."""
+    from backend.app.api import get_assembly_compliance as api_get_assembly_compliance
+    try:
+        result = await api_get_assembly_compliance(assembly_id=assembly_id)
+        return result.model_dump() if hasattr(result, "model_dump") else result
+    except Exception as e:
+        logger.error(f"Get assembly compliance failed: {e}")
+        return {"error": str(e)}
+
+
+@server.tool()
+async def get_supplier_risk() -> Dict:
+    """Supplier concentration risk and sole-source analysis."""
+    from backend.app.api import get_supplier_risk as api_get_supplier_risk
+    try:
+        result = await api_get_supplier_risk()
+        return result.model_dump() if hasattr(result, "model_dump") else result
+    except Exception as e:
+        logger.error(f"Get supplier risk failed: {e}")
+        return {"error": str(e)}
+
+
+@server.tool()
+async def get_part_sourcing(part_number: str) -> Dict:
+    """Primary supplier and share for a specific connector part."""
+    from backend.app.api import get_part_sourcing as api_get_part_sourcing
+    try:
+        result = await api_get_part_sourcing(part_number=part_number)
+        return result.model_dump() if hasattr(result, "model_dump") else result
+    except Exception as e:
+        logger.error(f"Get part sourcing failed: {e}")
+        return {"error": str(e)}
+
+
+@server.tool()
+async def analyze_disruption(
+    part_number: str,
+    max_alternatives: int = 8,
+    min_similarity: float = 55.0,
+) -> Dict:
+    """Full disruption mitigation workflow: impact, alternatives, compliance, supplier risk."""
+    from backend.app.api import analyze_disruption as api_analyze_disruption
+    from backend.app.models import DisruptionRequest
+
+    try:
+        result = await api_analyze_disruption(
+            DisruptionRequest(
+                part_number=part_number,
+                max_alternatives=max_alternatives,
+                min_similarity=min_similarity,
+            )
+        )
+        return result.model_dump() if hasattr(result, "model_dump") else result
+    except Exception as e:
+        logger.error(f"Analyze disruption failed: {e}")
+        return {"error": str(e)}
+
+
 if __name__ == "__main__":
     server.run()
