@@ -437,7 +437,9 @@ class Neo4jService:
                 req.standard AS standard,
                 req.severity AS severity,
                 inherited.id AS inherited_id,
-                inherited.name AS inherited_name
+                inherited.name AS inherited_name,
+                inherited.standard AS inherited_standard,
+                inherited.severity AS inherited_severity
             """,
             {"pn": part_number},
         )
@@ -449,61 +451,7 @@ class Neo4jService:
             """,
             {"pn": part_number},
         )
-        certifications = [r["name"] for r in cert_rows]
-
-        connector_name = None
-        assemblies_set: set = set()
-        requirements: List[ComplianceRequirement] = []
-        seen: set = set()
-
-        for row in rows:
-            connector_name = row.get("connector_name")
-            assemblies_set.add(row["source_assembly_name"])
-            key = (row["req_id"], row["source_assembly_id"])
-            if key not in seen:
-                seen.add(key)
-                requirements.append(
-                    ComplianceRequirement(
-                        id=row["req_id"],
-                        name=row["req_name"],
-                        standard=row["standard"],
-                        severity=row["severity"],
-                        source_assembly_id=row["source_assembly_id"],
-                        source_assembly_name=row["source_assembly_name"],
-                    )
-                )
-
-        gaps: List[ComplianceGap] = []
-        for req in requirements:
-            req_cert_map = {
-                "req-rohs": "RoHS",
-                "req-reach": "REACH",
-                "req-iatf16949": "IATF 16949",
-                "req-iso9001": "ISO 9001",
-                "req-aec-q200": "AEC-Q200",
-                "req-ul": "UL",
-                "req-iso26262-asil-d": "ISO 26262 ASIL-D",
-            }
-            expected_cert = req_cert_map.get(req.id)
-            if expected_cert and expected_cert not in certifications:
-                gaps.append(
-                    ComplianceGap(
-                        requirement_id=req.id,
-                        requirement_name=req.name,
-                        standard=req.standard,
-                        source_assembly_id=req.source_assembly_id,
-                        source_assembly_name=req.source_assembly_name,
-                    )
-                )
-
-        return ConnectorComplianceResponse(
-            part_number=part_number,
-            connector_name=connector_name,
-            assemblies=sorted(assemblies_set),
-            requirements=requirements,
-            certifications=certifications,
-            gaps=gaps,
-        )
+        return self._compliance_from_rows(part_number, rows, cert_rows)
 
     def _compliance_from_rows(
         self,
@@ -531,8 +479,29 @@ class Neo4jService:
                         severity=row["severity"],
                         source_assembly_id=row["source_assembly_id"],
                         source_assembly_name=row["source_assembly_name"],
+                        inherited_from=row.get("inherited_name"),
                     )
                 )
+            # Expand requirement hierarchy so inherited parents are gap-checked too
+            if row.get("inherited_id"):
+                inh_key = (row["inherited_id"], row["source_assembly_id"])
+                if inh_key not in seen:
+                    seen.add(inh_key)
+                    requirements.append(
+                        ComplianceRequirement(
+                            id=row["inherited_id"],
+                            name=row["inherited_name"],
+                            standard=row.get("inherited_standard")
+                            or row.get("standard")
+                            or "",
+                            severity=row.get("inherited_severity")
+                            or row.get("severity")
+                            or "medium",
+                            source_assembly_id=row["source_assembly_id"],
+                            source_assembly_name=row["source_assembly_name"],
+                            inherited_from=row["req_name"],
+                        )
+                    )
 
         gaps: List[ComplianceGap] = []
         req_cert_map = {
@@ -580,14 +549,20 @@ class Neo4jService:
             WITH pn, c, collect(DISTINCT asm) + collect(DISTINCT desc) AS allAssemblies
             UNWIND allAssemblies AS a
             MATCH (a)-[:REQUIRES]->(req:Requirement)
-            RETURN pn AS part_number,
+            OPTIONAL MATCH (req)-[:INHERITS_FROM*]->(inherited:Requirement)
+            RETURN DISTINCT
+                   pn AS part_number,
                    c.name AS connector_name,
                    a.id AS source_assembly_id,
                    a.name AS source_assembly_name,
                    req.id AS req_id,
                    req.name AS req_name,
                    req.standard AS standard,
-                   req.severity AS severity
+                   req.severity AS severity,
+                   inherited.id AS inherited_id,
+                   inherited.name AS inherited_name,
+                   inherited.standard AS inherited_standard,
+                   inherited.severity AS inherited_severity
             """,
             {"pns": part_numbers},
         )
