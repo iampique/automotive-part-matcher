@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-AI-powered matching for automotive electrical connectors. Engineers describe requirements in natural language (or upload a PDF/DOCX), and the system searches a catalog of 500+ connector variants using semantic search, structured scoring, and optional graph analysis.
+AI-powered matching for automotive electrical connectors. Engineers describe requirements in natural language (or upload a PDF/DOCX), and the system searches a catalog of 500+ connector variants using semantic search, structured scoring, and graph analysis over vehicle/BOM/supplier relationships.
 
 ## Features
 
@@ -11,7 +11,7 @@ AI-powered matching for automotive electrical connectors. Engineers describe req
 - **ACORN filtered search** — better recall when many hard filters are applied
 - **LangGraph workflow** — parse → search → score → rank with an execution trace
 - **Document upload** — PDF / DOCX requirements
-- **Optional Neo4j graph** — impact analysis, compliance inheritance, supplier risk
+- **Neo4j knowledge graph** — impact analysis, compliance inheritance, supplier risk, disruption mitigation
 - **MCP server** — expose search and graph tools to MCP-compatible clients
 
 ## Architecture
@@ -25,27 +25,29 @@ Requirements (text / PDF)
         │
    ┌────┴────┐
    ▼         ▼
- Qdrant    Neo4j (optional)
+ Qdrant     Neo4j
  vectors    relationships
 ```
 
 | Store | Role |
 |-------|------|
 | **Qdrant** | Semantic connector matching and similar-part recommendations |
-| **Neo4j** (optional) | Impact, compliance cascading, supplier topology |
+| **Neo4j** | Impact, compliance cascading, supplier topology, disruption workflows |
+
+Both stores are required for the full product experience. Qdrant answers “what matches these specs?”; Neo4j answers “what breaks, who supplies it, and what compliance cascades apply?”
 
 ## Quick start
 
-**Prerequisites:** Python 3.9+, Node.js 18+, a Qdrant instance (local Docker or cloud), OpenAI API key (embeddings), and Anthropic or OpenAI for extraction.
+**Prerequisites:** Python 3.9+, Node.js 18+, Qdrant (local Docker or cloud), Neo4j (AuraDB or local), OpenAI API key (embeddings), and Anthropic or OpenAI for extraction.
 
 ```bash
 # 1. Backend
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # edit with your keys
+cp .env.example .env   # edit with Qdrant, Neo4j, and LLM keys
 ./setup_local_qdrant.sh  # or point QDRANT_URL at cloud
-python ingest_data.py
+python ingest_data.py --with-graph
 uvicorn app.main:app --reload --port 8000
 
 # 2. Frontend (new terminal)
@@ -67,7 +69,7 @@ One-shot demo helper: `./scripts/start_demo.sh`
 | [Architecture](docs/architecture.md) | Dual-store design, workflow, ACORN/hybrid |
 | [Configuration](docs/configuration.md) | Matching tolerances and thresholds |
 | [Testing](docs/testing.md) | Pytest, manual UI checks |
-| [MCP](mcp/README.md) | MCP server setup |
+| [MCP](mcp_server/README.md) | MCP server setup |
 | [Contributing](CONTRIBUTING.md) | How to contribute |
 | [Security](SECURITY.md) | Vulnerability reporting |
 

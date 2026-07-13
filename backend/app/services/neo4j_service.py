@@ -2,7 +2,7 @@
 Neo4j graph database service for connector relationship queries.
 
 Provides impact analysis, compliance inheritance, and supplier topology
-queries. Neo4j is optional — when not configured the service reports
+queries. When not configured the service reports
 disabled and API routes return 503.
 """
 

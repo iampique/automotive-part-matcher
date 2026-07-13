@@ -46,7 +46,7 @@ Try:
 - Text search, e.g. `48-pin connector for EV battery, 48V, IP67, automotive grade`
 - Upload a file from `data/sample_requirements/`
 - Advanced options: Claude vs OpenAI, ACORN on/off
-- If Neo4j is connected: graph / disruption pages and `/health` showing `"neo4j": "connected"`
+- Graph / disruption pages and `/health` showing `"neo4j": "connected"`
 
 Health:
 

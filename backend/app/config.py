@@ -102,10 +102,10 @@ class Settings(BaseSettings):
         description="ACORN maximum selectivity threshold (0.0-1.0). Controls when to fall back to exact search"
     )
 
-    # Neo4j graph database (optional)
+    # Neo4j graph database (required for graph / disruption features)
     neo4j_uri: Optional[str] = Field(
         default=None,
-        description="Neo4j AuraDB connection URI (neo4j+s://...). Graph features disabled if unset.",
+        description="Neo4j connection URI (neo4j+s://... or bolt://...). Required for graph features.",
     )
 
     neo4j_username: str = Field(

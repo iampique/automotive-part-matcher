@@ -2,12 +2,14 @@
 
 ## Dual store: Qdrant + Neo4j
 
+The system is built around two complementary stores. Both are core to the product.
+
 | Store | Role | Typical questions |
 |-------|------|-------------------|
 | **Qdrant** | Vector search over connector embeddings | “Which connectors match these specs?” / “What’s similar to this part?” |
-| **Neo4j** (optional) | Graph of vehicles, assemblies, BOM, suppliers | “What breaks if this part is unavailable?” / “Where is supplier concentration risk?” |
+| **Neo4j** | Graph of vehicles, assemblies, BOM, suppliers, and requirements | “What breaks if this part is unavailable?” / “Where is supplier concentration risk?” / “Does this substitute inherit the right compliance?” |
 
-Vector search finds similar connectors. The graph answers relationship questions vectors cannot. Neo4j is optional: if unset, core matching still works and graph routes return `503`.
+Vector search finds similar connectors. The graph answers relationship questions vectors cannot — impact across vehicle programs, compliance inheritance through assemblies, and supplier topology / SPOF risk. Disruption mitigation chains both: Neo4j for impact and compliance, Qdrant for alternative discovery.
 
 ## Matching workflow (LangGraph)
 
@@ -34,7 +36,7 @@ Vector search finds similar connectors. The graph answers relationship questions
 3. **Score** — Fail hard requirements (score 0); score soft fit 0–100 with explanations.
 4. **Rank** — Return top-K matches plus an execution trace for the UI.
 
-A separate **disruption mitigation** workflow combines impact analysis, similar-part search, compliance, and supplier risk when Neo4j is available.
+A separate **disruption mitigation** workflow combines Neo4j impact analysis, Qdrant similar-part search, compliance subgraphs, and supplier risk scoring.
 
 ## ACORN (Qdrant)
 
@@ -63,4 +65,5 @@ Hard vs soft matching and numeric tolerances (pins, voltage, current, temperatur
 Next.js app talks to the FastAPI backend (`NEXT_PUBLIC_API_URL`). Main surfaces:
 
 - Search + workflow trace
-- Graph insights / disruption views (when Neo4j is connected)
+- Graph insights (supplier risk, impact, compliance)
+- Disruption mitigation workflow

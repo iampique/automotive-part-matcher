@@ -6,7 +6,7 @@
 - Node.js 18+
 - Docker (for local Qdrant and/or Neo4j)
 - API keys: OpenAI (embeddings), Anthropic and/or OpenAI (requirement extraction)
-- Optional: [Qdrant Cloud](https://cloud.qdrant.io) and/or [Neo4j AuraDB](https://neo4j.com/cloud/platform/aura-graph-database/)
+- [Qdrant](https://cloud.qdrant.io) (cloud or local) and [Neo4j](https://neo4j.com/cloud/platform/aura-graph-database/) (AuraDB or local) — both required for the full dual-store system
 
 ## Environment
 
@@ -15,7 +15,7 @@ cd backend
 cp .env.example .env
 ```
 
-Edit `.env` with your credentials. Required for core search:
+Edit `.env` with your credentials. Required:
 
 | Variable | Description |
 |----------|-------------|
@@ -24,11 +24,6 @@ Edit `.env` with your credentials. Required for core search:
 | `OPENAI_API_KEY` | Embeddings (`text-embedding-3-large`) |
 | `ANTHROPIC_API_KEY` | Claude extraction (if `LLM_PROVIDER=claude`) |
 | `LLM_PROVIDER` | `claude` or `openai` |
-
-Optional Neo4j (graph features disabled if unset):
-
-| Variable | Description |
-|----------|-------------|
 | `NEO4J_URI` | e.g. `neo4j+s://….databases.neo4j.io` or `bolt://localhost:7687` |
 | `NEO4J_USERNAME` | Default `neo4j` |
 | `NEO4J_PASSWORD` | Database password |
@@ -69,10 +64,10 @@ docker stop qdrant && docker rm qdrant
 ### Ingest connector data
 
 ```bash
-python ingest_data.py
+python ingest_data.py --with-graph
 ```
 
-Loads `data/raw/connector_catalog.json`, creates the collection, and uploads embeddings.
+Loads `data/raw/connector_catalog.json` into Qdrant (embeddings) and graph relationships into Neo4j. For Qdrant-only ingest use `python ingest_data.py`; then run `python ingest_graph.py` separately.
 
 Useful helpers:
 
@@ -112,9 +107,9 @@ Or start both from the repo root:
 ./scripts/start_demo.sh
 ```
 
-## Neo4j (optional)
+## Neo4j
 
-Without `NEO4J_URI` / `NEO4J_PASSWORD`, search still works; graph endpoints return `503`.
+Neo4j is required for impact analysis, compliance inheritance, supplier topology, and disruption mitigation. Configure it before running a full local demo.
 
 ### AuraDB Free
 
@@ -164,4 +159,4 @@ curl http://localhost:8000/api/graph/suppliers/risk
 
 ## MCP
 
-See [mcp/README.md](../mcp/README.md).
+See [mcp_server/README.md](../mcp_server/README.md).
